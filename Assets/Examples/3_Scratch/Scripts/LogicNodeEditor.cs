@@ -53,7 +53,7 @@ public class LogicNodeEditor : NodeEditor
 
         ClearHighlights();
 
-        dragBox.parent = Graph.background;
+        dragBox.SetParent(Graph.background);
         dragBox.gameObject.SetActive(false);
 
         detailsPanel.HidePanel();
@@ -236,7 +236,6 @@ public class LogicNodeEditor : NodeEditor
                 HighlightNode(node); 
                 node.OnSelect(Graph);
                 detailsPanel.ShowPanel(node);
-                print("DOWN");
 
                 foreach (Node selectedNode in highlightedNodes)
                 {
