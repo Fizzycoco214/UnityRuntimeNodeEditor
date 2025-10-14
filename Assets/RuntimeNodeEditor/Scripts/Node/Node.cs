@@ -7,35 +7,35 @@ namespace RuntimeNodeEditor
 {
     public abstract class Node : MonoBehaviour
     {
-        public string               ID          { get; private set; }
-        public Vector2              Position    { get => _panelRectTransform.anchoredPosition; }
-        public RectTransform        PanelRect   { get => _panelRectTransform; }
-        public string               LoadPath    { get; private set; }
-        public List<SocketOutput>   Outputs     { get; private set; }
-        public List<SocketInput>    Inputs      { get; private set; }
+        public string ID { get; private set; }
+        public Vector2 Position { get => _panelRectTransform.anchoredPosition; }
+        public RectTransform PanelRect { get => _panelRectTransform; }
+        public string LoadPath { get; private set; }
+        public List<SocketOutput> Outputs { get; private set; }
+        public List<SocketInput> Inputs { get; private set; }
 
         public event Action<SocketInput, IOutput> OnConnectionEvent;
         public event Action<SocketInput, IOutput> OnDisconnectEvent;
 
-        public TMP_Text                     headerText;
-        public GameObject                   draggableBody;
+        public TMP_Text headerText;
+        public GameObject draggableBody;
 
-        private NodeDraggablePanel          _dragPanel;
-        private RectTransform               _panelRectTransform;
-        private INodeEvents                 _nodeEvents;
-        private ISocketEvents               _socketEvents;
+        private NodeDraggablePanel _dragPanel;
+        private RectTransform _panelRectTransform;
+        private INodeEvents _nodeEvents;
+        private ISocketEvents _socketEvents;
 
         public void Init(INodeEvents nodeEvents, ISocketEvents socketEvents, Vector2 pos, string id, string path)
         {
-            ID                  = id;
-            LoadPath            = path;
-            Outputs             = new List<SocketOutput>();
-            Inputs              = new List<SocketInput>();
+            ID = id;
+            LoadPath = path;
+            Outputs = new List<SocketOutput>();
+            Inputs = new List<SocketInput>();
 
-            _nodeEvents         = nodeEvents;
-            _socketEvents       = socketEvents;
+            _nodeEvents = nodeEvents;
+            _socketEvents = socketEvents;
             _panelRectTransform = gameObject.GetComponent<RectTransform>();
-            _dragPanel          = draggableBody.AddComponent<NodeDraggablePanel>();
+            _dragPanel = draggableBody.AddComponent<NodeDraggablePanel>();
             _dragPanel.Init(this, _nodeEvents);
             SetPosition(pos);
         }
@@ -46,17 +46,29 @@ namespace RuntimeNodeEditor
         {
             return true;
         }
-        
-        public void Register(SocketOutput output)
+
+        public void Register(SocketOutput output, Type type)
         {
             output.SetOwner(this, _socketEvents);
+            output.SetType(type);
             Outputs.Add(output);
+        }
+
+        public void Register(SocketOutput output)
+        {
+            Register(output, typeof(object));
+        }
+
+        public void Register(SocketInput input, Type type)
+        {
+            input.SetOwner(this, _socketEvents);
+            input.SetType(type);
+            Inputs.Add(input);
         }
 
         public void Register(SocketInput input)
         {
-            input.SetOwner(this, _socketEvents);
-            Inputs.Add(input);
+            Register(input, typeof(object));
         }
 
         public void Connect(SocketInput input, SocketOutput output)
@@ -79,6 +91,11 @@ namespace RuntimeNodeEditor
 
         }
 
+        public virtual void ShowDetails(DetailsPanel panel)
+        {
+
+        }
+
         public void SetHeader(string name)
         {
             headerText.SetText(name);
@@ -93,10 +110,15 @@ namespace RuntimeNodeEditor
         {
             _panelRectTransform.SetAsLastSibling();
         }
-        
+
         public void SetAsFirstSibling()
         {
             _panelRectTransform.SetAsFirstSibling();
+        }
+
+        public virtual void OnSelect(NodeGraph graph)
+        {
+            
         }
     }
 }

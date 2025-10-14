@@ -1,59 +1,76 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Android.Gradle.Manifest;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI.Extensions;
+using UnityEngine.UIElements;
 
 namespace RuntimeNodeEditor
 {
     public class NodeGraph : MonoBehaviour
     {
-        public RectTransform        GraphContainer  => _graphContainer;
+        public RectTransform GraphContainer => _graphContainer;
 
         //  scene references
-        public RectTransform        contextMenuContainer;
-        public RectTransform        nodeContainer;
-        public RectTransform        background;
+        public RectTransform contextMenuContainer;
+        public RectTransform nodeContainer;
+        public RectTransform background;
         public GraphPointerListener pointerListener;
-        public BezierCurveDrawer    drawer;
+        public BezierCurveDrawer drawer;
 
-        public List<Node>           nodes;
-        public List<Connection>     connections;
+        public List<Node> nodes;
+        public List<Connection> connections;
 
         //  cache
-        private SocketOutput        _currentDraggingSocket;
-        private Vector2             _pointerOffset;
-	    private Vector2             _localPointerPos;
-	    private Vector2             _duplicateOffset;
-        private Vector2             _zoomCenterPos;
-        private float               _currentZoom;
-        private float               _minZoom;
-        private float               _maxZoom;
-        private RectTransform       _nodeContainer;
-	    private RectTransform       _graphContainer;
+        private SocketOutput _currentDraggingSocket;
+        private Vector2 _pointerOffset;
+        private Vector2 _localPointerPos;
+        private Vector2 _duplicateOffset;
+        private Vector2 _zoomCenterPos;
+        private float _currentZoom;
+        private float _minZoom;
+        private float _maxZoom;
+        private RectTransform _nodeContainer;
+        private RectTransform _graphContainer;
 
-        private SignalSystem        _signalSystem;
+        private SignalSystem _signalSystem;
+
+
+        [Header("Snapping Settings")]
+        public bool allowGridSnapping;
+        public float gridSnapUnitSize;
+
+
+        [Header("Alignment Settings")]
+        public float alignmentSnapSensitivity;
+        public GameObject alignmentIndicator;
+        Dictionary<Node, GameObject> alignmentLines = new();
 
         public void Init(SignalSystem signalSystem, float minZoom, float maxZoom)
         {
-            _nodeContainer                              = nodeContainer;
-            _graphContainer                             = this.GetComponent<RectTransform>();
-	        _duplicateOffset                            = (Vector2.one * 10f);
-            nodes                                       = new List<Node>();
-	        connections                                 = new List<Connection>();
-            _signalSystem                               = signalSystem;
-            _currentZoom                                = 1f;
-            _minZoom                                    = minZoom;
-            _maxZoom                                    = maxZoom;
+            _nodeContainer = nodeContainer;
+            _graphContainer = this.GetComponent<RectTransform>();
+            _duplicateOffset = (Vector2.one * 10f);
+            nodes = new List<Node>();
+            connections = new List<Connection>();
+            _signalSystem = signalSystem;
+            _currentZoom = 1f;
+            _minZoom = minZoom;
+            _maxZoom = maxZoom;
 
-            _signalSystem.OnOutputSocketDragStartEvent    += OnOutputDragStarted;
-            _signalSystem.OnOutputSocketDragDropEvent     += OnOutputDragDroppedTo;
-            _signalSystem.OnInputSocketClickEvent         += OnInputSocketClicked;
-            _signalSystem.OnOutputSocketClickEvent        += OnOutputSocketClicked;
-            _signalSystem.OnNodePointerDownEvent          += OnNodePointerDown;
-            _signalSystem.OnNodePointerDragEvent          += OnNodePointerDrag;
-            _signalSystem.OnGraphPointerDragEvent         += OnGraphPointerDragged;
-            _signalSystem.OnGraphPointerScrollEvent       += OnGraphPointerScrolled;
+            _signalSystem.OnOutputSocketDragStartEvent += OnOutputDragStarted;
+            _signalSystem.OnOutputSocketDragDropEvent += OnOutputDragDroppedTo;
+            _signalSystem.OnInputSocketClickEvent += OnInputSocketClicked;
+            _signalSystem.OnOutputSocketClickEvent += OnOutputSocketClicked;
+            _signalSystem.OnNodePointerDownEvent += OnNodePointerDown;
+            _signalSystem.OnNodePointerDragEvent += OnNodePointerDrag;
+            _signalSystem.OnNodePointerUpEvent += ClearAlignmentLines;
+
+            _signalSystem.OnGraphPointerDragEvent += OnGraphPointerDragged;
+            _signalSystem.OnGraphPointerScrollEvent += OnGraphPointerScrolled;
 
             pointerListener.Init(_signalSystem);
             drawer.Init(_signalSystem);
@@ -66,15 +83,15 @@ namespace RuntimeNodeEditor
 
         public void Create(string prefabPath)
         {
-	        var mousePosition   = Utility.GetMousePosition();
-	        var pos             = Utility.GetLocalPointIn(nodeContainer, mousePosition);
-            
+            var mousePosition = Utility.GetMousePosition();
+            var pos = Utility.GetLocalPointIn(nodeContainer, mousePosition);
+
             Create(prefabPath, pos);
         }
 
         public void Create(string prefabPath, Vector2 pos)
         {
-            var node            = Utility.CreateNodePrefab<Node>(prefabPath, nodeContainer);
+            var node = Utility.CreateNodePrefab<Node>(prefabPath, nodeContainer);
             node.Init(_signalSystem, _signalSystem, pos, NewId(), prefabPath);
             node.Setup();
             nodes.Add(node);
@@ -87,34 +104,55 @@ namespace RuntimeNodeEditor
             Destroy(node.gameObject);
             nodes.Remove(node);
         }
-        
-	    public void Duplicate(Node node)
-	    {
-		    Serializer info = new Serializer();
-		    node.OnSerialize(info);
-		    Create(node.LoadPath, node.Position + _duplicateOffset);
-		    var newNode = nodes.Last();
-		    newNode.OnDeserialize(info);
-	    }
+
+        public void Duplicate(Node node)
+        {
+            Serializer info = new Serializer();
+            node.OnSerialize(info);
+            Create(node.LoadPath, node.Position + _duplicateOffset);
+            var newNode = nodes.Last();
+            newNode.OnDeserialize(info);
+        }
 
         public void Connect(SocketInput input, SocketOutput output)
         {
+            if (!input.socketType.IsAssignableFrom(output.socketType))
+            {
+                return;
+            }
+
             var connection = new Connection(NewId(), input, output);
 
             input.Connect(connection);
             output.Connect(connection);
 
             connections.Add(connection);
-            input.OwnerNode.Connect(input, output);
+
+            drawer.connectionColor = Socket.socketColors.GetValueOrDefault(output.socketType, Color.yellow);
+
             drawer.Add(connection.connId, output.handle, input.handle);
+
+            drawer.SetConnectionColor(connection.connId, Socket.socketColors.GetValueOrDefault(output.socketType, Color.yellow));
+
+            //Check to see if the graph has a cycle after adding the connection
+            if (DoesGraphHaveCycle())
+            {
+                print("CYCLE DETECTED, REMOVING CONNECTION");
+                Disconnect(connection);
+                return;
+            }
+            input.OwnerNode.Connect(input, output);
+
+            input.OwnerNode.SetAsLastSibling();
+            output.OwnerNode.SetAsLastSibling();
 
             _signalSystem.InvokeSocketConnection(input, output);
         }
 
         public void Disconnect(Connection conn)
         {
-            var input   = conn.input;
-            var output  = conn.output;
+            var input = conn.input;
+            var output = conn.output;
 
             drawer.Remove(conn.connId);
             input.OwnerNode.Disconnect(input, output);
@@ -131,7 +169,7 @@ namespace RuntimeNodeEditor
             var dcList = new List<Connection>(input.Connections);
             foreach (var conn in dcList)
             {
-                Disconnect(conn);   
+                Disconnect(conn);
             }
         }
 
@@ -185,12 +223,19 @@ namespace RuntimeNodeEditor
                     LoadConn(data);
                 }
 
-                drawer.UpdateDraw();
+                StartCoroutine(DelayedConnectionUpdate());
             }
             else
             {
                 Debug.Log("Specified file not exist.");
             }
+        }
+
+        //Delay to allow for nodes to finish their creation steps
+        public IEnumerator DelayedConnectionUpdate()
+        {
+            yield return new WaitForEndOfFrame();
+            drawer.UpdateDraw();
         }
 
         public string ExportJson()
@@ -200,9 +245,9 @@ namespace RuntimeNodeEditor
 
         public GraphData Export()
         {
-            var graph       = new GraphData();
-            var nodeDatas   = new List<NodeData>();
-            var connDatas   = new List<ConnectionData>();
+            var graph = new GraphData();
+            var nodeDatas = new List<NodeData>();
+            var connDatas = new List<ConnectionData>();
 
             foreach (var node in nodes)
             {
@@ -292,7 +337,7 @@ namespace RuntimeNodeEditor
             // check if output connected to this target input already 
             if (_currentDraggingSocket.HasConnection() && target.HasConnection())
             {
-                if (target.Connections.Contains(_currentDraggingSocket.connection) )
+                if (target.Connections.Contains(_currentDraggingSocket.connection))
                 {
                     //  then do nothing
                     _currentDraggingSocket = null;
@@ -325,6 +370,7 @@ namespace RuntimeNodeEditor
         protected virtual void OnOutputDragStarted(SocketOutput socketOnDrag)
         {
             _currentDraggingSocket = socketOnDrag;
+            drawer.connectionColor = Socket.socketColors.GetValueOrDefault(socketOnDrag.socketType, Color.white);
             drawer.StartDrag(_currentDraggingSocket);
             drawer.UpdateDraw();
 
@@ -341,7 +387,6 @@ namespace RuntimeNodeEditor
 
         protected virtual void OnNodePointerDown(Node node, PointerEventData eventData)
         {
-            node.SetAsLastSibling();
             RectTransformUtility.ScreenPointToLocalPointInRectangle(node.PanelRect, eventData.position,
                                                                     eventData.pressEventCamera, out _pointerOffset);
             DragNode(node, eventData);
@@ -356,9 +401,9 @@ namespace RuntimeNodeEditor
         {
             if (Mathf.Abs(eventData.scrollDelta.y) > float.Epsilon)
             {
-                _currentZoom    *= 1f + eventData.scrollDelta.y;
-	            _currentZoom    = Mathf.Clamp(_currentZoom, _minZoom, _maxZoom);
-	            _zoomCenterPos  = Utility.GetMousePosition();
+                _currentZoom *= 1f + eventData.scrollDelta.y;
+                _currentZoom = Mathf.Clamp(_currentZoom, _minZoom, _maxZoom);
+                _zoomCenterPos = Utility.GetMousePosition();
 
                 Vector2 beforePointInContent;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(_graphContainer, _zoomCenterPos, null, out beforePointInContent);
@@ -398,13 +443,86 @@ namespace RuntimeNodeEditor
                                                                                 eventData.pressEventCamera, out _localPointerPos);
                 if (success)
                 {
-                    node.SetPosition(_localPointerPos - _pointerOffset);
+                    Vector2 newNodePosition = _localPointerPos - _pointerOffset;
+                    if (Input.GetKey(KeyCode.LeftShift))
+                    {
+                        newNodePosition = new Vector2((int)(newNodePosition.x / gridSnapUnitSize) * gridSnapUnitSize, (int)(newNodePosition.y / gridSnapUnitSize) * gridSnapUnitSize);
+                    }
+
+                    if (alignmentSnapSensitivity != 0)
+                    {
+                        foreach (Node otherNode in nodes)
+                        {
+                            if (otherNode == node)
+                            {
+                                continue;
+                            }
+
+                            if (Mathf.Abs(newNodePosition.x - otherNode.Position.x) < alignmentSnapSensitivity)
+                            {
+                                newNodePosition.x = otherNode.Position.x;
+                                if (!alignmentLines.ContainsKey(otherNode))
+                                {
+                                    alignmentLines.Add(otherNode, Instantiate(alignmentIndicator, background));
+                                }
+                            }
+
+                            if (Mathf.Abs(newNodePosition.y - otherNode.Position.y) < alignmentSnapSensitivity)
+                            {
+                                newNodePosition.y = otherNode.Position.y;
+                                if (!alignmentLines.ContainsKey(otherNode))
+                                {
+                                    alignmentLines.Add(otherNode, Instantiate(alignmentIndicator, background));
+                                }
+                            }
+                        }
+
+                        UpdateAlignmentLines(node);
+                    }
+
+                    node.SetPosition(newNodePosition);
                     drawer.UpdateDraw();
                 }
             }
         }
 
-        private Vector2 ClampToNodeContainer(PointerEventData eventData)
+        Vector2 offset = new Vector2(-115, 35);
+        private void UpdateAlignmentLines(Node node)
+        {
+            List<Node> nodesToRemove = new();
+            foreach (Node otherNode in alignmentLines.Keys)
+            {
+                if (Mathf.Abs(node.Position.x - otherNode.Position.x) < alignmentSnapSensitivity || Mathf.Abs(node.Position.y - otherNode.Position.y) < alignmentSnapSensitivity)
+                {
+                    UILineRenderer line = alignmentLines[otherNode].GetComponent<UILineRenderer>();
+
+                    line.Points[1] = node.Position + offset;
+                    line.Points[0] = otherNode.Position + offset;
+                    line.Resolution = Vector2.Distance(line.Points[0], line.Points[1]) / 20f;
+                }
+                else
+                {
+                    Destroy(alignmentLines[otherNode]);
+                    nodesToRemove.Add(otherNode);
+                }
+            }
+
+            foreach (Node otherNode in nodesToRemove)
+            {
+                alignmentLines.Remove(otherNode);
+            }
+        }
+
+        private void ClearAlignmentLines(Node n, PointerEventData data)
+        {
+            foreach (Node node in alignmentLines.Keys)
+            {
+                Destroy(alignmentLines[node]);
+            }
+            alignmentLines.Clear();
+        }
+
+        public Vector2 ClampToNodeContainer(PointerEventData eventData)
         {
             var rawPointerPos = eventData.position;
             var canvasCorners = new Vector3[4];
@@ -433,7 +551,7 @@ namespace RuntimeNodeEditor
         private void LoadNode(NodeData data)
         {
             var node = Utility.CreateNodePrefab<Node>(data.path, nodeContainer);
-            var pos  = new Vector2(data.posX, data.posY);
+            var pos = new Vector2(data.posX, data.posY);
             node.Init(_signalSystem, _signalSystem, pos, data.id, data.path);
             node.Setup();
             nodes.Add(node);
@@ -458,6 +576,7 @@ namespace RuntimeNodeEditor
                 connections.Add(connection);
                 input.OwnerNode.Connect(input, output);
 
+                drawer.connectionColor = Socket.socketColors.GetValueOrDefault(output.socketType, Color.yellow);
                 drawer.Add(connection.connId, output.handle, input.handle);
             }
         }
@@ -471,5 +590,73 @@ namespace RuntimeNodeEditor
             rectTransform.localPosition -= deltaPosition;
         }
         private static string NewId() { return System.Guid.NewGuid().ToString(); }
+
+
+        private bool DoesGraphHaveCycle()
+        {
+            HashSet<Node> exploredNodes = new();
+            if (nodes.Count > 0)
+            {
+                while (exploredNodes.Count < nodes.Count)
+                {
+                    //graphs can have multiple nodes with no incoming edges, so pick a root node for DFS at random
+                    for (int i = 0; i < nodes.Count; i++)
+                    {
+                        if (!exploredNodes.Contains(nodes[i]))
+                        {
+                            if (SearchNodes(nodes[i], new HashSet<Node>(), ref exploredNodes))
+                            {
+                                return true;
+                            }
+
+                            
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+
+        //TODO BEFORE THIS GOES INTO PRODUCTION: Cache the final tree of the search to help performance in later searches
+        //Depth First Search for cycles
+        private bool SearchNodes(Node nodeHead, HashSet<Node> exploringNodes, ref HashSet<Node> exploredNodes)
+        {
+            
+            if (nodeHead == null)
+            {
+                return false;
+            }
+
+            if (exploringNodes.Contains(nodeHead))
+            {
+                print("CYCLE AT:" + nodeHead.headerText.text);
+                return true;
+            }
+
+            if (exploredNodes.Contains(nodeHead))
+            {
+                return false;
+            }
+
+            exploringNodes.Add(nodeHead);
+
+            foreach (SocketOutput output in nodeHead.Outputs)
+            {
+                if (SearchNodes(output.connection?.input.OwnerNode, exploringNodes, ref exploredNodes))
+                {
+                    return true;
+                }
+            }
+
+            foreach (Node node in exploringNodes)
+            {
+                exploredNodes.Add(node);
+            }
+
+            exploringNodes.Clear();
+
+            return false;
+        }
     }
 }

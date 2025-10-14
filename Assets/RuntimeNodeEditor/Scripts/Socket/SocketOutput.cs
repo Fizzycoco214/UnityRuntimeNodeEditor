@@ -1,12 +1,13 @@
 using System;
 using UnityEngine.EventSystems;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace RuntimeNodeEditor
 {
     public class SocketOutput : Socket, IOutput, IPointerClickHandler, IDragHandler, IEndDragHandler
     {
-        public  Connection  connection;
+        public Connection connection;
         private object      _value;
 
         public void SetValue(object value)
@@ -22,7 +23,8 @@ namespace RuntimeNodeEditor
 
         public T GetValue<T>()
         {
-            return (T)_value;
+            object val = _value ?? default;
+            return (T)val;
         }
 
         public void OnPointerClick(PointerEventData eventData)

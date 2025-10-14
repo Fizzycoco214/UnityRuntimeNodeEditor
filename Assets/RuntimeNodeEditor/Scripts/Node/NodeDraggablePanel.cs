@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 
 namespace RuntimeNodeEditor
 {
-    public class NodeDraggablePanel : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IDragHandler
+    public class NodeDraggablePanel : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IDragHandler, IPointerUpHandler
     {
         private Node _ownerNode;
         private INodeEvents _events;
@@ -30,5 +30,9 @@ namespace RuntimeNodeEditor
             _events.InvokeNodePointerDrag(_ownerNode, eventData);
         }
 
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            _events.InvokeNodePointerUp(_ownerNode, eventData);
+        }
     }
 }

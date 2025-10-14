@@ -122,6 +122,7 @@ namespace RuntimeNodeEditor
                 t += step;
             }
 
+            _lineRenderer.color = connectionColor;
             _lineRenderer.m_points = pointList.ToArray();
             _lineRenderer.SetVerticesDirty();
         }
@@ -146,6 +147,7 @@ namespace RuntimeNodeEditor
             linerenderer.lineThickness  = lineThickness;
             linerenderer.color          = color;
             linerenderer.raycastTarget  = false;
+
 
             return linerenderer;
         }

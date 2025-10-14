@@ -1,0 +1,47 @@
+{
+    "inputSockets": [
+        {
+            "label": "Input Bool",
+            "dataType": "bool"
+        }
+    ],
+    "outputSockets": [
+        {
+            "label": "Truth Value",
+            "dataType": "bool",
+            "defaultValue": "false"
+        },
+        {
+            "label": "Number",
+            "dataType": "float",
+            "defaultValue": "1.503"
+        },
+        {
+            "label": "Truth Value 2",
+            "dataType": "bool",
+            "defaultValue": "true"
+        },
+        {
+            "label": "Text",
+            "dataType": "string",
+            "defaultValue": "words"
+        },
+        {
+            "label": "Text 2",
+            "dataType": "string",
+            "defaultValue": "String of text"
+        }
+    ],
+    "details": [
+        {
+            "label":"Test Detail",
+            "dataType": "bool",
+            "defaultValue": "false"
+        },
+        {
+            "label":"Detail String",
+            "dataType": "string",
+            "defaultValue": "Test String"
+        }
+    ]
+}

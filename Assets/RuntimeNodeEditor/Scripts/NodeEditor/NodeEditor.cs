@@ -1,36 +1,52 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace RuntimeNodeEditor
 {
     public class NodeEditor : MonoBehaviour
     {
-        public NodeGraph                Graph  { get { return _graph; } }
-        public SignalSystem             Events { get { return _signalSystem; } }
-        public float                    minZoom = 0.3f;
-        public float                    maxZoom = 2f;
-        public GameObject               contextMenuPrefab;
-        
-        private NodeGraph               _graph;
-        private ContextMenu             _contextMenu;
-        private ContextItemData         _contextMenuData;
-        private SignalSystem            _signalSystem;
+        public NodeGraph Graph { get { return _graph; } }
+        public SignalSystem Events { get { return _signalSystem; } }
+        public float minZoom = 0.3f;
+        public float maxZoom = 2f;
+        public GameObject contextMenuPrefab;
+
+        private NodeGraph _graph;
+        private ContextMenu _contextMenu;
+        private ContextItemData _contextMenuData;
+        private SignalSystem _signalSystem;
+
+        [Header("Snapping Settings")]
+        public float gridSnapUnitSize;
+
+
+        [Header("Alignment Settings")]
+        public float alignmentSnapSensitivity;
+        public GameObject alignmentLinePrefab;
 
         public virtual void StartEditor(NodeGraph graph)
         {
-            _signalSystem   = new SignalSystem();
-            _graph          = graph;
+            _signalSystem = new SignalSystem();
+            _graph = graph;
             _graph.Init(_signalSystem, minZoom, maxZoom);
+
+            _graph.gridSnapUnitSize = gridSnapUnitSize;
+            _graph.alignmentSnapSensitivity = alignmentSnapSensitivity;
+            _graph.alignmentIndicator = alignmentLinePrefab;
 
             if (contextMenuPrefab != null)
             {
-                _contextMenu    = Instantiate(contextMenuPrefab, _graph.contextMenuContainer).GetComponent<ContextMenu>();
+                _contextMenu = Instantiate(contextMenuPrefab, _graph.contextMenuContainer).GetComponent<ContextMenu>();
                 _contextMenu.Init();
                 CloseContextMenu();
             }
         }
-        
+
         //  context methods
         public void DisplayContextMenu()
         {
@@ -54,7 +70,7 @@ namespace RuntimeNodeEditor
         {
             return CreateGraph<TGraphComponent>(holder, Color.gray, Color.yellow);
         }
-        
+
         public TGraphComponent CreateGraph<TGraphComponent>(RectTransform holder, Color bgColor, Color connectionColor) where TGraphComponent : NodeGraph
         {
             //  Create a parent
@@ -63,7 +79,7 @@ namespace RuntimeNodeEditor
             parent.AddComponent<RectTransform>().Stretch();
             parent.AddComponent<Image>();
             parent.AddComponent<Mask>();
-            
+
             //      - add background child, stretch
             var bg = new GameObject("Background");
             bg.transform.SetParent(parent.transform);
@@ -81,14 +97,14 @@ namespace RuntimeNodeEditor
             graph.transform.SetParent(parent.transform);
             var graphRect = graph.AddComponent<RectTransform>();
             graphRect.sizeDelta = Vector2.one * 1000f;
-            graphRect.anchoredPosition = Vector2.zero; 
+            graphRect.anchoredPosition = Vector2.zero;
 
 
             //          - add line container child, stretch
             var lineContainer = new GameObject("LineContainer");
             lineContainer.transform.SetParent(graph.transform);
             var lineContainerRect = lineContainer.AddComponent<RectTransform>().Stretch();
-            
+
             //          - add node container
             var nodeContainer = new GameObject("NodeContainer");
             nodeContainer.transform.SetParent(graph.transform);
@@ -100,8 +116,8 @@ namespace RuntimeNodeEditor
             var pLocatorRect = pointerLocator.AddComponent<RectTransform>();
             pLocatorRect.sizeDelta = Vector2.zero;
             pLocatorRect.anchoredPosition = Vector2.zero;
-            
-            
+
+
             //      - add ctx menu child, stretch
             var ctxMenuContainer = new GameObject("CtxMenuContainer");
             ctxMenuContainer.transform.SetParent(parent.transform);
@@ -111,9 +127,9 @@ namespace RuntimeNodeEditor
             bezierDrawer.pointerLocator = pLocatorRect;
             bezierDrawer.lineContainer = lineContainerRect;
             bezierDrawer.connectionColor = connectionColor;
-            
+
             var listener = pointerListener.AddComponent<GraphPointerListener>();
-            
+
             var nodeGraph = graph.AddComponent<TGraphComponent>();
             nodeGraph.contextMenuContainer = ctxContainerRect;
             nodeGraph.nodeContainer = nodeContainerRect;

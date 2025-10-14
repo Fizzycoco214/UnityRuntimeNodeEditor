@@ -5,9 +5,22 @@ namespace RuntimeNodeEditor
 {
     public class SignalSystem : INodeEvents, ISocketEvents, IConnectionEvents
     {
+        public event Action<PointerEventData>               OnGraphPointerDown;
+        public event Action<PointerEventData>               OnGraphPointerUp;
         public event Action<PointerEventData>               OnGraphPointerClickEvent;
         public event Action<PointerEventData>               OnGraphPointerDragEvent;
         public event Action<PointerEventData>               OnGraphPointerScrollEvent;
+        
+
+        public void InvokeGraphPointerDown(PointerEventData eventData)
+        {
+            OnGraphPointerDown?.Invoke(eventData);
+        }
+
+        public void InvokeGraphPointerUp(PointerEventData eventData)
+        {
+            OnGraphPointerUp?.Invoke(eventData);
+        }
 
         public void InvokeGraphPointerClick(PointerEventData eventData)
         {
@@ -28,6 +41,7 @@ namespace RuntimeNodeEditor
         public event Action<Node, PointerEventData>         OnNodePointerClickEvent;
         public event Action<Node, PointerEventData>         OnNodePointerDownEvent;
         public event Action<Node, PointerEventData>         OnNodePointerDragEvent;
+        public event Action<Node, PointerEventData>         OnNodePointerUpEvent;
         
         public void InvokeNodePointerClick(Node node, PointerEventData eventData)
         {
@@ -43,8 +57,11 @@ namespace RuntimeNodeEditor
         {
             OnNodePointerDragEvent?.Invoke(node, eventData);
         }
-        
 
+        public void InvokeNodePointerUp(Node node, PointerEventData eventData)
+        {
+            OnNodePointerUpEvent?.Invoke(node, eventData);
+        }
 
         //  ISocketPointerListener
         public event Action<SocketOutput>                   OnOutputSocketDragStartEvent;
@@ -97,13 +114,14 @@ namespace RuntimeNodeEditor
 
     public interface INodeEvents
     {
-        event Action<Node, PointerEventData>                OnNodePointerClickEvent;
-        event Action<Node, PointerEventData>                OnNodePointerDownEvent;
-        event Action<Node, PointerEventData>                OnNodePointerDragEvent;
+        event Action<Node, PointerEventData> OnNodePointerClickEvent;
+        event Action<Node, PointerEventData> OnNodePointerDownEvent;
+        event Action<Node, PointerEventData> OnNodePointerDragEvent;
 
         void InvokeNodePointerClick(Node node, PointerEventData eventData);
         void InvokeNodePointerDown(Node node, PointerEventData eventData);
         void InvokeNodePointerDrag(Node node, PointerEventData eventData);
+        void InvokeNodePointerUp(Node node, PointerEventData eventData); 
     }
 
     public interface ISocketEvents
