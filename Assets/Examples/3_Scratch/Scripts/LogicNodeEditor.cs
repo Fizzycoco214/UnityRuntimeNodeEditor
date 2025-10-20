@@ -25,10 +25,11 @@ public class LogicNodeEditor : NodeEditor
 
     public DetailsPanel detailsPanel;
 
-
+    public static LogicNodeEditor Instance { private set; get; }
 
     public override void StartEditor(NodeGraph graph)
     {
+        Instance = this;
 
         base.StartEditor(graph);
 
@@ -210,10 +211,6 @@ public class LogicNodeEditor : NodeEditor
         {
             case PointerEventData.InputButton.Left:
                 CloseContextMenu();
-                if (!(Input.GetKey(KeyCode.LeftControl) || hasDraggedNodes))
-                {
-                    ClearHighlights();
-                }
                 break;
             case PointerEventData.InputButton.Right:
                 var ctx = new ContextMenuBuilder()
@@ -233,6 +230,11 @@ public class LogicNodeEditor : NodeEditor
         switch (eventData.button)
         {
             case PointerEventData.InputButton.Left:
+                if (!Input.GetKey(KeyCode.LeftControl) && !highlightedNodes.Contains(node))
+                {
+                    ClearHighlights();
+                }
+
                 HighlightNode(node); 
                 node.OnSelect(Graph);
                 detailsPanel.ShowPanel(node);
@@ -330,6 +332,8 @@ public class LogicNodeEditor : NodeEditor
             }
             return;
         }
+
+        
 
         RectTransform highlightRect = Instantiate(highlight, Graph.background).GetComponent<RectTransform>();
         highlightRect.gameObject.SetActive(true);

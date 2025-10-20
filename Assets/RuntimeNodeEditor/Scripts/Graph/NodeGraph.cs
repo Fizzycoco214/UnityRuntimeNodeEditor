@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.Android.Gradle.Manifest;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI.Extensions;
@@ -47,7 +46,15 @@ namespace RuntimeNodeEditor
         [Header("Alignment Settings")]
         public float alignmentSnapSensitivity;
         public GameObject alignmentIndicator;
-        Dictionary<Node, GameObject> alignmentLines = new();
+
+        Dictionary<Node, AlignmentInfo> alignmentLines = new();
+
+        struct AlignmentInfo
+        {
+            public GameObject indicator;
+            public Vector2 selectedNodeOffset;
+            public Vector2 endpoint;
+        }
 
         public void Init(SignalSystem signalSystem, float minZoom, float maxZoom)
         {
@@ -449,36 +456,9 @@ namespace RuntimeNodeEditor
                         newNodePosition = new Vector2((int)(newNodePosition.x / gridSnapUnitSize) * gridSnapUnitSize, (int)(newNodePosition.y / gridSnapUnitSize) * gridSnapUnitSize);
                     }
 
-                    if (alignmentSnapSensitivity != 0)
-                    {
-                        foreach (Node otherNode in nodes)
-                        {
-                            if (otherNode == node)
-                            {
-                                continue;
-                            }
+                    SnapToAlignments(node, ref newNodePosition);
 
-                            if (Mathf.Abs(newNodePosition.x - otherNode.Position.x) < alignmentSnapSensitivity)
-                            {
-                                newNodePosition.x = otherNode.Position.x;
-                                if (!alignmentLines.ContainsKey(otherNode))
-                                {
-                                    alignmentLines.Add(otherNode, Instantiate(alignmentIndicator, background));
-                                }
-                            }
-
-                            if (Mathf.Abs(newNodePosition.y - otherNode.Position.y) < alignmentSnapSensitivity)
-                            {
-                                newNodePosition.y = otherNode.Position.y;
-                                if (!alignmentLines.ContainsKey(otherNode))
-                                {
-                                    alignmentLines.Add(otherNode, Instantiate(alignmentIndicator, background));
-                                }
-                            }
-                        }
-
-                        UpdateAlignmentLines(node);
-                    }
+                    UpdateAlignmentLines(node);
 
                     node.SetPosition(newNodePosition);
                     drawer.UpdateDraw();
@@ -486,23 +466,188 @@ namespace RuntimeNodeEditor
             }
         }
 
-        Vector2 offset = new Vector2(-115, 35);
+        //If this causes lag, refactor to cache the corner positions of the non highlighted nodes
+        private void SnapToAlignments(Node node, ref Vector2 newNodePos)
+        {
+
+            //1 2
+            //0 3
+            Vector3[] nodeCorners = new Vector3[4];
+
+            //0 = left, 1 = right, 2 = center
+            float[] nodeXAlignments;
+
+            //0 = bottom, 1 = top, 2 = center
+            float[] nodeYAlignments;
+
+            void GetNodeAlignments(Vector2 position)
+            {
+                node.PanelRect.GetLocalCorners(nodeCorners);
+
+                nodeXAlignments = new float[]{
+                    nodeCorners[0].x,
+                    nodeCorners[3].x,
+                    (nodeCorners[0].x + nodeCorners[3].x) / 2
+                };
+
+                nodeYAlignments = new float[]{
+                    nodeCorners[0].y,
+                    nodeCorners[1].y,
+                    (nodeCorners[0].y + nodeCorners[1].y) / 2
+                };
+
+                for (int i = 0; i < 3; i++)
+                {
+                    nodeXAlignments[i] += position.x;
+                    nodeYAlignments[i] += position.y;
+                }
+            }
+
+            //Used for reference when creating alignment indicators
+            Vector2 unsnappedNewPos = newNodePos;
+            GetNodeAlignments(newNodePos);
+            foreach (Node otherNode in nodes)
+            {
+
+
+                if (otherNode == node || LogicNodeEditor.Instance.highlightedNodes.Contains(otherNode))
+                {
+                    continue;
+                }
+
+                Vector3[] otherNodeCorners = new Vector3[4];
+                otherNode.PanelRect.GetLocalCorners(otherNodeCorners);
+
+                float[] otherXAlignments = {
+                    otherNodeCorners[0].x,
+                    otherNodeCorners[3].x,
+                    (otherNodeCorners[0].x + otherNodeCorners[3].x) / 2
+                };
+
+
+                float[] otherYAlignments = {
+                    otherNodeCorners[0].y,
+                    otherNodeCorners[1].y,
+                    (otherNodeCorners[0].y + otherNodeCorners[1].y) / 2
+                };
+
+                for (int i = 0; i < 3; i++)
+                {
+                    otherXAlignments[i] += otherNode.Position.x;
+                    otherYAlignments[i] += otherNode.Position.y;
+                }
+
+                Vector2 selectedOffset = new();
+                bool isSnapped = false;
+                bool XSnapped = false;
+                bool YSnapped = false;
+                //Use all possible snapping points for edges, only snap centers to other centers
+
+                for (int i = 0; i < 2; i++)
+                {
+
+
+                    for (int e = 0; e < 3; e++)
+                    {
+                        if (!XSnapped && IsWithinSnapRange(nodeXAlignments[e], otherXAlignments[i]))
+                        {
+                            selectedOffset.x = nodeXAlignments[e] - newNodePos.x;
+                            newNodePos.x = otherXAlignments[i] - selectedOffset.x;
+                            isSnapped = true;
+                            XSnapped = true;
+
+                            GetNodeAlignments(newNodePos);
+                        }
+                    }
+
+                    for (int e = 0; e < 3; e++)
+                    {
+                        if (!YSnapped && IsWithinSnapRange(nodeYAlignments[e], otherYAlignments[i]))
+                        {
+                            selectedOffset.y = nodeYAlignments[e] - newNodePos.y;
+                            newNodePos.y = otherYAlignments[i] - selectedOffset.y;
+                            isSnapped = true;
+                            YSnapped = true;
+
+                            GetNodeAlignments(newNodePos);
+                        }
+                    }
+
+
+                }
+
+                if (IsWithinSnapRange(nodeXAlignments[2], otherXAlignments[2]))
+                {
+                    selectedOffset.x = 0;
+                    newNodePos.x = otherXAlignments[2];
+                    isSnapped = true;
+                }
+
+                if (IsWithinSnapRange(nodeYAlignments[2], otherYAlignments[2]))
+                {
+                    selectedOffset.y = 0;
+                    newNodePos.y = otherYAlignments[2];
+                    isSnapped = true;
+                }
+
+                //If the node has been snapped in an axis, create an alignment line from that
+                if (alignmentLines.ContainsKey(otherNode))
+                {
+                    continue;
+                }
+
+                if (!isSnapped)
+                {
+                    continue;
+                }
+
+                Vector2 otherNodePoint = new();
+                if (newNodePos.x != unsnappedNewPos.x)
+                {
+                    otherNodePoint = new Vector2(newNodePos.x, otherYAlignments[2]);
+                }
+
+                if (newNodePos.y != unsnappedNewPos.y)
+                {
+                    otherNodePoint = new Vector2(otherXAlignments[2], newNodePos.y);
+                }
+
+                AlignmentInfo info = new();
+                info.indicator = Instantiate(alignmentIndicator, background);
+                info.selectedNodeOffset = selectedOffset;
+                info.endpoint = otherNodePoint;
+
+                alignmentLines.Add(otherNode, info);
+            }
+        }
+        
+        bool IsWithinSnapRange(float point, float snapPoint)
+        {
+            return Mathf.Abs(point - snapPoint) < alignmentSnapSensitivity;
+        }
+
+        Vector2 lineOffset = new Vector2(-115, 35);
         private void UpdateAlignmentLines(Node node)
         {
             List<Node> nodesToRemove = new();
+           
+
             foreach (Node otherNode in alignmentLines.Keys)
             {
-                if (Mathf.Abs(node.Position.x - otherNode.Position.x) < alignmentSnapSensitivity || Mathf.Abs(node.Position.y - otherNode.Position.y) < alignmentSnapSensitivity)
-                {
-                    UILineRenderer line = alignmentLines[otherNode].GetComponent<UILineRenderer>();
+                Vector2 alignmentPoint1 = node.Position;
+                Vector2 alignmentPoint2 = alignmentLines[otherNode].endpoint;
 
-                    line.Points[1] = node.Position + offset;
-                    line.Points[0] = otherNode.Position + offset;
+                if (IsWithinSnapRange(alignmentPoint1.x, alignmentPoint2.x) || IsWithinSnapRange(alignmentPoint1.y, alignmentPoint2.y))
+                {
+                    UILineRenderer line = alignmentLines[otherNode].indicator.GetComponent<UILineRenderer>();
+
+                    line.Points[1] = alignmentPoint1 + alignmentLines[otherNode].selectedNodeOffset + lineOffset;
+                    line.Points[0] = alignmentPoint2 + alignmentLines[otherNode].selectedNodeOffset + lineOffset;
                     line.Resolution = Vector2.Distance(line.Points[0], line.Points[1]) / 20f;
                 }
                 else
                 {
-                    Destroy(alignmentLines[otherNode]);
+                    Destroy(alignmentLines[otherNode].indicator);
                     nodesToRemove.Add(otherNode);
                 }
             }
@@ -517,7 +662,7 @@ namespace RuntimeNodeEditor
         {
             foreach (Node node in alignmentLines.Keys)
             {
-                Destroy(alignmentLines[node]);
+                Destroy(alignmentLines[node].indicator);
             }
             alignmentLines.Clear();
         }

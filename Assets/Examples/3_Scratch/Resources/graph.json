@@ -5,15 +5,15 @@
             "values": [
                 {
                     "key": "Test Detail",
-                    "value": "false"
+                    "value": "False"
                 },
                 {
                     "key": "Detail String",
                     "value": "Test String"
                 }
             ],
-            "posX": -352.79052734375,
-            "posY": 163.30816650390626,
+            "posX": -324.6580810546875,
+            "posY": 64.83828735351563,
             "path": "Nodes/JSON Node",
             "inputSocketIds": [
                 "08954e94-a916-4e90-9dd2-eda17636a36e"
@@ -31,7 +31,7 @@
             "values": [
                 {
                     "key": "title",
-                    "value": "Bool Logic​"
+                    "value": "Bool Logic​​​"
                 },
                 {
                     "key": "sizeX",
@@ -82,7 +82,7 @@
             "id": "3c42b04d-e19f-442f-a6b9-23888072ab83",
             "values": [],
             "posX": 188.10345458984376,
-            "posY": -183.4698028564453,
+            "posY": -12.519149780273438,
             "path": "Nodes/Display Node",
             "inputSocketIds": [
                 "000d621f-a8d4-4359-84ac-6a8705752606"
@@ -94,7 +94,7 @@
             "values": [
                 {
                     "key": "title",
-                    "value": "Text Display​"
+                    "value": "Text Display​​​"
                 },
                 {
                     "key": "sizeX",
@@ -106,7 +106,7 @@
                 }
             ],
             "posX": 64.32122802734375,
-            "posY": -12.237648010253907,
+            "posY": 159.83828735351563,
             "path": "Nodes/Collection",
             "inputSocketIds": [],
             "outputSocketIds": []
@@ -115,7 +115,7 @@
             "id": "359f9512-c07e-46a5-ac32-ebdc695ea90b",
             "values": [],
             "posX": 188.10345458984376,
-            "posY": -295.4020690917969,
+            "posY": -126.70205688476563,
             "path": "Nodes/Display Node",
             "inputSocketIds": [
                 "58100d97-9ff5-49fe-a53d-2e4bf02f24e8"
