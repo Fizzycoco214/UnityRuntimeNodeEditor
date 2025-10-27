@@ -376,7 +376,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 845766127}
-  - component: {fileID: 845766129}
   m_Layer: 5
   m_Name: Node Graph
   m_TagString: Untagged
@@ -404,14 +403,6 @@ RectTransform:
   m_AnchoredPosition: {x: 4.999999, y: 0}
   m_SizeDelta: {x: -10.000002, y: -20}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &845766129
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 845766126}
-  m_CullTransparentMesh: 1
 --- !u!1 &862336645
 GameObject:
   m_ObjectHideFlags: 0
@@ -553,7 +544,7 @@ MonoBehaviour:
   contextMenuPrefab: {fileID: 7851094904423997867, guid: f0a47b73b6e5348788ca78dd88662484,
     type: 3}
   gridSnapUnitSize: 20
-  alignmentSnapSensitivity: 15
+  alignmentSnapSensitivity: 10
   alignmentLinePrefab: {fileID: 2675652874417568250, guid: 2d9892d5ae2d1b24ca7488d261ecd2b2,
     type: 3}
   highlight: {fileID: 4461355480706487427, guid: 7c968f84fa0229248aeae589ee2112f8,

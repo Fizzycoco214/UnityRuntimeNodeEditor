@@ -12,8 +12,8 @@
                     "value": "Test String"
                 }
             ],
-            "posX": -324.6580810546875,
-            "posY": 64.83828735351563,
+            "posX": -302.9937744140625,
+            "posY": 121.51429748535156,
             "path": "Nodes/JSON Node",
             "inputSocketIds": [
                 "08954e94-a916-4e90-9dd2-eda17636a36e"
@@ -31,7 +31,7 @@
             "values": [
                 {
                     "key": "title",
-                    "value": "Bool Logic​​​"
+                    "value": "Bool Logic​​​​"
                 },
                 {
                     "key": "sizeX",
@@ -94,7 +94,7 @@
             "values": [
                 {
                     "key": "title",
-                    "value": "Text Display​​​"
+                    "value": "Text Display​​​​"
                 },
                 {
                     "key": "sizeX",
