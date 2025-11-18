@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI.Extensions;
@@ -524,7 +525,6 @@ namespace RuntimeNodeEditor
                     (otherNodeCorners[0].x + otherNodeCorners[3].x) / 2
                 };
 
-
                 float[] otherYAlignments = {
                     otherNodeCorners[0].y,
                     otherNodeCorners[1].y,
@@ -590,7 +590,7 @@ namespace RuntimeNodeEditor
                     isSnapped = true;
                 }
 
-                //If the node has been snapped in an axis, create an alignment line from that
+                //If we've already aligned to this node, no need to create a second line
                 if (alignmentLines.ContainsKey(otherNode))
                 {
                     continue;
@@ -626,7 +626,8 @@ namespace RuntimeNodeEditor
             return Mathf.Abs(point - snapPoint) < alignmentSnapSensitivity;
         }
 
-        Vector2 lineOffset = new Vector2(-115, 35);
+        // Unsure where this magic number comes from, should be looked into if possible
+        Vector2 lineOffset = new Vector2(-115, 35); 
         private void UpdateAlignmentLines(Node node)
         {
             List<Node> nodesToRemove = new();
@@ -643,6 +644,8 @@ namespace RuntimeNodeEditor
 
                     line.Points[1] = alignmentPoint1 + alignmentLines[otherNode].selectedNodeOffset + lineOffset;
                     line.Points[0] = alignmentPoint2 + alignmentLines[otherNode].selectedNodeOffset + lineOffset;
+
+                    //Dynamic Line Resolution to not stretch the pattern
                     line.Resolution = Vector2.Distance(line.Points[0], line.Points[1]) / 20f;
                 }
                 else
@@ -763,11 +766,11 @@ namespace RuntimeNodeEditor
         }
 
 
-        //TODO BEFORE THIS GOES INTO PRODUCTION: Cache the final tree of the search to help performance in later searches
+        //TODO BEFORE THIS GOES INTO PRODUCTION: Cache the final tree of the search to help performance in later searches, will likely become a performance issue if not addressed
         //Depth First Search for cycles
         private bool SearchNodes(Node nodeHead, HashSet<Node> exploringNodes, ref HashSet<Node> exploredNodes)
         {
-            
+
             if (nodeHead == null)
             {
                 return false;

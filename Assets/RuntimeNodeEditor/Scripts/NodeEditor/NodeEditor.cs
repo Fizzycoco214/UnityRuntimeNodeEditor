@@ -1,8 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices.WindowsRuntime;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -42,9 +40,8 @@ namespace RuntimeNodeEditor
         [Header("Drag Object")]
         public RectTransform dragBox;
         private Vector2 dragOrigin;
-        private bool hasDraggedNodes = false;
 
-        [Header("Details Panel Object")]
+        [Header("Details Panel")]
         public DetailsPanel detailsPanel;
 
         public virtual void StartEditor(NodeGraph graph)
@@ -293,7 +290,6 @@ namespace RuntimeNodeEditor
 
         protected void OnNodeDrag(Node node, PointerEventData eventData)
         {
-            hasDraggedNodes = true;
             nodeDragOrigins.TryGetValue(node, out Vector2 nodeOrigin);
             Vector2 nodePosDiff = node.Position - nodeOrigin;
 
@@ -311,13 +307,7 @@ namespace RuntimeNodeEditor
 
         protected void OnNodePointerUp(Node node, PointerEventData eventData)
         {
-            IEnumerator DelayedReset()
-            {
-                yield return new WaitForEndOfFrame();
-                hasDraggedNodes = false;
-            }
             nodeDragOrigins.Clear();
-            StartCoroutine(DelayedReset());
         }
 
         protected void OnNodeConnectionPointerClick(string connID, PointerEventData eventData)
